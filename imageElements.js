@@ -12,9 +12,9 @@ export function createStyleElement(imageData) {
     const styleItem = $('<div class="style-item"></div>');
     const img = $(`<img class="styleBg" src="${imageData}">`);
     const deleteBtn = $('<div class="delete-stamp" data-tooltip="删除此图片">×</div>');
-    const saveLocationBtn = $('<div class="save-location" data-tooltip="保存此印花参数到缓存">💾 储存参数</div>');
-    const writeLocationBtn = $('<div class="write-location" data-tooltip="读取缓存参数到此印花">☝️ 应用参数</div>');
-    const syncBtn = $('<div class="sync-stamp" data-tooltip="应用此印花参数至所有款式">👉 应用所有</div>');
+    const saveLocationBtn = $('<div class="save-location" data-tooltip="保存此印花参数到缓存"><img src="imgs/save.svg" class="icons">储存此参数</div>');
+    const writeLocationBtn = $('<div class="write-location" data-tooltip="读取缓存参数到此印花"><img src="imgs/layers2.svg" class="icons">应用到当前</div>');
+    const syncBtn = $('<div class="sync-stamp" data-tooltip="应用此印花参数至所有款式"><img src="imgs/layers3.svg" class="icons">应用至所有</div>');
 
     // 添加同步按钮点击处理
 

@@ -149,7 +149,7 @@ $(document).ready(function () {
         markers.each(function () {
             const marker = $(this);
             const markerEl = marker[0];
-            
+
             // 初始化标记图片
             const markerImg = marker.find('img');
             if (!markerImg.length) {
@@ -181,7 +181,7 @@ $(document).ready(function () {
                             target.style.transform = `translate(${x}px, ${y}px)`;
                             target.setAttribute('data-x', x);
                             target.setAttribute('data-y', y);
-                            
+
                             // 更新数据属性
                             target.setAttribute('data-width', target.offsetWidth);
                             target.setAttribute('data-height', target.offsetHeight);
@@ -318,11 +318,6 @@ $(document).ready(function () {
         // 添加元素到DOM（添加到最前面）并添加视觉反馈
         stampItem.append(img, deleteBtn);
         previewArea.prepend(stampItem);
-        // 添加视觉反馈
-        stampItem.addClass('new-upload')
-            .css('opacity', 0)
-            .animate({ opacity: 1 }, 300);
-        setTimeout(() => stampItem.removeClass('new-upload'), 900);
     };
 
     // 设置款式图片上传
@@ -341,8 +336,6 @@ $(document).ready(function () {
         stampUploadCallback
     );
 
-
-
     // 当前选中的印花图片
     let selectedStamp = null;
 
@@ -357,7 +350,7 @@ $(document).ready(function () {
         $('#stylePreview .style-item').each(function () {
             const styleItem = $(this);
             const itemData = styleItemsData.get(styleItem[0]);
-            
+
             if (itemData && itemData.activeMarker) {
                 // 更新激活色块中的图片
                 const markerImg = itemData.activeMarker.find('img');
@@ -419,11 +412,11 @@ $(document).ready(function () {
             // 强制设置下载文件名，避免浏览器自动修改
             link.setAttribute('download', `${name}.jpg`);
             link.href = imageData;
-            
+
             // 添加临时样式确保点击有效
             link.style.display = 'none';
             document.body.appendChild(link);
-            
+
             // 使用更可靠的点击事件触发方式
             const clickEvent = new MouseEvent('click', {
                 view: window,
@@ -431,7 +424,7 @@ $(document).ready(function () {
                 cancelable: true
             });
             link.dispatchEvent(clickEvent);
-            
+
             // 延迟移除以确保下载开始
             setTimeout(() => {
                 document.body.removeChild(link);
@@ -470,7 +463,7 @@ $(document).ready(function () {
         for (let i = 0; i < styleItems.length; i++) {
             const styleItem = $(styleItems[i]);
             const styleImg = styleItem.find('img.styleBg')[0];
-            
+
             try {
                 // 等待款式图片加载完成
                 if (!styleImg || !styleImg.complete || !styleImg.naturalWidth) {
@@ -521,7 +514,7 @@ $(document).ready(function () {
                                 const compositeResult = await compositeImages(styleItem, canvas, ctx, stampImg.src, stampName);
                                 if (compositeResult) {
                                     successCount++;
-                                    
+
                                     // 将合成结果添加到zip文件
                                     const styleName = styleItem.find('.styleBg').attr('alt') || '';
                                     const fileName = `${styleName.split('.')[0]}-${stampName.split('.')[0]}.jpg`;
@@ -550,7 +543,7 @@ $(document).ready(function () {
             try {
                 // 生成并下载zip文件
                 showDownloadOverlay('正在创建压缩包...', false);
-                const content = await zip.generateAsync({type: 'blob'});
+                const content = await zip.generateAsync({ type: 'blob' });
                 const url = URL.createObjectURL(content);
                 const a = document.createElement('a');
                 a.href = url;
@@ -559,7 +552,7 @@ $(document).ready(function () {
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-                
+
                 showDownloadOverlay('下载完成', false);
                 setTimeout(hideDownloadOverlay, 2000);
             } catch (e) {
@@ -581,15 +574,15 @@ $(document).ready(function () {
         const canvasHeight = styleImg.naturalHeight;
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
-        
+
         // 绘制基础款式图片
         ctx.drawImage(styleImg, 0, 0, canvasWidth, canvasHeight);
-        
+
         // 创建临时图片元素用于加载印花
         const stampImg = new Image();
         stampImg.crossOrigin = 'Anonymous';
         stampImg.src = stampImgSrc;
-        
+
         // 等待印花图片加载
         await new Promise((resolve) => {
             stampImg.onload = resolve;
@@ -605,7 +598,7 @@ $(document).ready(function () {
             console.error('未找到激活的位置标记');
             return false;
         }
-        
+
         // 从marker的数据属性获取位置和尺寸
         const x = parseFloat(marker.attr('data-x')) || 0;
         const y = parseFloat(marker.attr('data-y')) || 0;
@@ -620,7 +613,7 @@ $(document).ready(function () {
         // 计算保持比例的尺寸
         let keepRatioWidth = width;
         let keepRatioHeight = width / aspectRatio;
-        
+
         // 如果按宽度计算的高度超过容器高度，则按高度计算
         if (keepRatioHeight > height) {
             keepRatioHeight = height;
@@ -635,19 +628,19 @@ $(document).ready(function () {
 
         // 保存当前Canvas状态
         ctx.save();
-        
+
         try {
             // 高质量绘制(保持原始比例)
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
-            
+
             // 绘制印花图片
             ctx.drawImage(
                 stampImg,
                 0, 0, naturalWidth, naturalHeight, // 源图像裁剪区域(使用完整图像)
                 scaledX, scaledY, scaledWidth, scaledHeight // 画布上的位置和尺寸
             );
-            
+
             // 绘制印花图片
             ctx.drawImage(
                 stampImg,
@@ -662,14 +655,14 @@ $(document).ready(function () {
             ctx.restore();
         }
 
-                    try {
-                        let imageData = canvas.toDataURL('image/jpeg', 0.7);
-                        // 生成包含印花名称的文件名（印花名+款式名）
-                        const styleName = styleItem.find('.styleBg').attr('alt') || '';
-                        const fileName = `${styleName.split('.')[0]}${stampName.split('.')[0]}`;
-                
-                        // 返回图片数据URL，不直接触发下载
-                        return imageData;
+        try {
+            let imageData = canvas.toDataURL('image/jpeg', 0.7);
+            // 生成包含印花名称的文件名（印花名+款式名）
+            const styleName = styleItem.find('.styleBg').attr('alt') || '';
+            const fileName = `${styleName.split('.')[0]}${stampName.split('.')[0]}`;
+
+            // 返回图片数据URL，不直接触发下载
+            return imageData;
         } catch (e) {
             console.error('生成图片数据失败:', e);
             return false;
