@@ -11,10 +11,10 @@
 export function createStyleElement(imageData) {
     const styleItem = $('<div class="style-item"></div>');
     const img = $(`<img class="styleBg" src="${imageData}">`);
-    const deleteBtn = $('<div class="delete-stamp">×</div>');
-    const saveLocationBtn = $('<div class="save-location">💾 储存参数</div>');
-    const writeLocationBtn = $('<div class="write-location">☝️ 应用参数</div>');
-    const syncBtn = $('<div class="sync-stamp">👉 应用所有</div>');
+    const deleteBtn = $('<div class="delete-stamp" data-tooltip="删除此图片">×</div>');
+    const saveLocationBtn = $('<div class="save-location" data-tooltip="保存此印花参数到缓存">💾 储存参数</div>');
+    const writeLocationBtn = $('<div class="write-location" data-tooltip="读取缓存参数到此印花">☝️ 应用参数</div>');
+    const syncBtn = $('<div class="sync-stamp" data-tooltip="应用此印花参数至所有款式">👉 应用所有</div>');
 
     // 添加同步按钮点击处理
 
@@ -26,8 +26,8 @@ export function createStyleElement(imageData) {
         }
 
         const allPositionData = [];
-        
-        markers.each(function() {
+
+        markers.each(function () {
             const marker = $(this);
             const transform = marker.css('transform');
             let translateX = 0, translateY = 0;
@@ -69,10 +69,10 @@ export function createStyleElement(imageData) {
         try {
             // 保存所有印花位置数据
             localStorage.setItem('stampPositionsData', JSON.stringify(allPositionData));
-            
+
             // 启用应用按钮
             writeLocationBtn.prop('disabled', false);
-            
+
             // 显示保存成功提示
             console.log(`已保存 ${allPositionData.length} 个印花位置参数`);
         } catch (e) {
@@ -80,7 +80,7 @@ export function createStyleElement(imageData) {
             alert('保存失败，请检查存储空间');
         }
     });
-    writeLocationBtn.on('click', function() {
+    writeLocationBtn.on('click', function () {
         const savedData = localStorage.getItem('stampPositionsData');
         if (!savedData) {
             console.log('没有找到保存的印花位置数据');
@@ -94,10 +94,10 @@ export function createStyleElement(imageData) {
                 return;
             }
             // 遍历所有印花色块
-            styleItem.find('.position-marker').each(function() {
+            styleItem.find('.position-marker').each(function () {
                 const marker = $(this);
                 const index = marker.attr('data-index');
-                
+
                 // 查找匹配的参数
                 const matchedData = positionsData.find(item => item.index === index);
                 if (matchedData) {
@@ -121,7 +121,7 @@ export function createStyleElement(imageData) {
             console.log('解析印花位置数据失败:', e);
         }
     });
-        syncBtn.on('click', function () {
+    syncBtn.on('click', function () {
 
         // 获取当前印花位置
         const marker = styleItem.find('.position-marker[data-active="true"]');
@@ -152,9 +152,9 @@ export function createStyleElement(imageData) {
             window.globalStampPosition.height = parseFloat(marker.css('height'));
 
             // 3. 更新底部显示
-            $('#stamp-position-display').text(
-                `印花位置: 左${translateX}px 上${translateY}px 宽${window.globalStampPosition.width}px 高${window.globalStampPosition.height}px`
-            );
+            // $('#stamp-position-display').text(
+            //     `印花位置: 左${translateX}px 上${translateY}px 宽${window.globalStampPosition.width}px 高${window.globalStampPosition.height}px`
+            // );
             // 4. 同步到所有款式（修正后的代码）
             $('.style-item').each(function () {
                 const item = $(this);
@@ -179,8 +179,8 @@ export function createStyleElement(imageData) {
     });
     // 创建按钮容器并添加按钮
     const buttonGroup = $('<div class="button-group"></div>');
-    buttonGroup.append(saveLocationBtn, writeLocationBtn,syncBtn);
-    styleItem.append(buttonGroup, deleteBtn);
+    buttonGroup.append(saveLocationBtn, writeLocationBtn, syncBtn);
+    styleItem.append(deleteBtn, buttonGroup);
 
     // 为款式图片添加位置标记功能
     styleItem.append('<div class="position-markers"></div>');

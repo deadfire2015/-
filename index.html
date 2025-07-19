@@ -14,6 +14,7 @@
 <body>
     <!-- 预览区域 -->
     <div class="layout-container">
+         <div id="stamp-position-display" class="stamp-position-display" >❣️ 温馨提示: 1.上传款式图片; 2.上传印花图片; 3.调整印花大小位置; 4.点击合成按钮.(缓存只会保存一个款型图片的印花参数)</div>
         <!-- 款式图片预览 -->
         <div id="stylePreview" class="styles-container"></div>
         <!-- 印花图片预览 -->
@@ -32,12 +33,11 @@
             <input type="file" id="stampUpload" class="upload-input" accept="image/*" multiple>
         </div>
         <div class="button-container">
-            <input type="button" id="mixbutton" value="⚡合成吧" class="mix">
+            <input type="button" id="mixbutton" value="⚡合成" class="mix">
         </div>
     </div>
     <script type="module" src="app.js"></script>
-
-    <div id="stamp-position-display" class="stamp-position-display" >点击同步印花位置显示明细</div>
+    <!-- 下载遮罩层 -->
     <div class="download-overlay">
       <div class="download-progress">
         <div class="progress-bar"></div>

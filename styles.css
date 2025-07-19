@@ -1,5 +1,11 @@
 /* ========== 合并后的样式 ========== */
 /* 全局样式重置 */
+:root {
+    --borderRadius-main: 12px;
+    --borderRadius-second: 8px;
+    --borderRadius-third: 4px;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -18,8 +24,13 @@ body {
 .layout-container {
     display: flex;
     flex-direction: column;
-    padding: 1vh 1vw;
+    padding: 1vh;
     gap: 1vh;
+    background-color: #ffffff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: var(--borderRadius-main);
+    overflow: hidden;
+    margin: 1vh 1vw;
 }
 
 /* 容器样式 */
@@ -32,20 +43,18 @@ body {
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
     gap: 0.5vw;
-    padding: 1vh;
     align-items: flex-start;
-
+    border-radius: var(--borderRadius-second);
 }
 
 .styles-container {
-    height: 60vh;
+    height: 58.5vh;
     padding-bottom: 0;
 }
 
 .stamps-container {
     background-color: #ffffff;
     height: 16vh;
-    border-radius: 12px;
 }
 
 .styles-container::-webkit-scrollbar {
@@ -61,8 +70,6 @@ body {
     width: auto;
     height: 100%;
     background: #f5f5f5;
-    border-radius: 8px;
-    overflow: hidden;
     cursor: pointer;
 }
 
@@ -80,30 +87,15 @@ body {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
-}
-
-/* 按钮样式 */
-button {
-    padding: 10px 20px;
-    background-color: #00011e;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    transition: background-color 0.3s ease;
-}
-
-button:hover {
-    background-color: #00c4c4;
+    border-radius: var(--borderRadius-second);
 }
 
 /* 上传区域样式 */
 .upload-area {
     position: fixed;
     width: 100vw;
-    height: 15vh;
-    bottom: 50px;
+    height: 13vh;
+    bottom: 14px;
     margin: auto;
     display: flex;
     gap: 1vw;
@@ -116,7 +108,7 @@ button:hover {
     border: 1px dashed #141212;
     width: 40vw;
     height: 100%;
-    border-radius: 12px;
+    border-radius: var(--borderRadius-main);
     background-color: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(10px);
     display: flex;
@@ -161,7 +153,7 @@ button:hover {
     width: 100%;
     height: 100%;
     border: none;
-    border-radius: 12px;
+    border-radius: var(--borderRadius-main);
     background-color: rgb(0, 2, 17);
     color: white;
     font-size: 20px;
@@ -179,7 +171,7 @@ button:hover {
     display: flex;
     align-items: center;
     background: #f5f5f5;
-    border-radius: 5px;
+    border-radius: var(--borderRadius-second);
     position: relative;
     margin-bottom: 10px;
 }
@@ -193,8 +185,9 @@ button:hover {
     position: absolute;
     top: 4px;
     left: 4px;
-    width: 20px;
-    height: 20px;
+    width: auto;
+    height: 24px;
+    padding: 0 4px;
     background-color: rgba(255, 255, 255, 1);
     color: rgb(23, 22, 22);
     border-radius: 6px;
@@ -207,13 +200,13 @@ button:hover {
 
 .file-name {
     position: absolute;
-    top: 4px;
-    left: 30px;
-    max-width: calc(100% - 40px);
+    bottom: 4px;
+    left: 4px;
+    max-width: calc(100% - 10px);
     padding: 0 6px;
-    height: 20px;
-    background-color: rgba(255, 255, 255, 1);
-    color: rgb(23, 22, 22);
+    height: 24px;
+    color: #000;
+    background-color: rgba(255, 255, 255, 0.7);
     border-radius: 6px;
     font-size: 12px;
     display: flex;
@@ -222,34 +215,39 @@ button:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     z-index: 10;
+    cursor: default;
+    backdrop-filter: blur(2px);
 }
 
-.stamp-item:hover>.delete-stamp,
-.style-item:hover>.delete-stamp {
-    display: flex;
+.style-item>.file-name {
+    top: 4px;
+    left: 26px;
+    bottom: auto;
+    width: auto;
 }
 
 .delete-stamp {
     position: absolute;
-    display: none;
-    width: 30px;
-    height: 30px;
-    right: 0px;
-    top: 0px;
-    background: #ff4444;
-    color: white;
-    border-radius: 10px;
+    display: flex;
+    width: 32px;
+    height: 24px;
+    right: 4px;
+    top: 4px;
+    background: #d32f2f78;
+    color: rgb(255, 255, 255);
+    border-radius: 6px;
     cursor: pointer;
     transition: all 0.2s ease-in-out;
     align-items: center;
     justify-content: center;
-    font-size: 13px;
-    z-index: 10;
+    font-size: 14px;
+    z-index: 90;
+    backdrop-filter: blur(2px);
 }
-
 
 .delete-stamp:hover {
     background-color: #d32f2f;
+    box-shadow: 0 0 4px rgba(255, 0, 0, 0.8);
 }
 
 .button-group {
@@ -286,95 +284,6 @@ button:hover {
     border: 1px solid #0000007f;
     background-color: #0e0e0ff5;
     box-shadow: 0 6px 20px rgba(7, 20, 81, 0.4);
-}
-
-/* 弹层样式 */
-.stamp-modal {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    z-index: 100;
-    justify-content: center;
-    align-items: center;
-}
-
-.modal-content {
-    width: 96vh;
-    height: 96vh;
-    border-radius: 8px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-    position: relative;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    margin: auto;
-}
-
-.stamp-preview {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    border-radius: 5px;
-    height: 95vh;
-    position: relative;
-}
-
-.stamp-preview img {
-    max-width: 100%;
-    max-height: 88vh;
-    object-fit: contain;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-}
-
-.position-options {
-    position: absolute;
-    right: 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    border-radius: 5px;
-    padding: 16px 0;
-    background-color: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(5px);
-}
-
-.position-options label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px;
-    cursor: pointer;
-    color: #fff;
-}
-
-.position-options input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-}
-
-.close-modal {
-    position: relative;
-    top: 410px;
-    display: block;
-    width: 100px;
-    height: 48px;
-    padding: 12px;
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    margin-top: 20px;
-}
-
-.close-modal:hover {
-    background-color: #45a049;
 }
 
 /* 位置标记样式 */
@@ -473,7 +382,7 @@ button:hover {
     margin: 15px auto;
     padding: 10px;
     background: #f8f8f8;
-    border-radius: 4px;
+    border-radius: var(--borderRadius-third);
     text-align: center;
     max-width: 600px;
     font-family: Arial, sans-serif;
@@ -493,6 +402,48 @@ button:hover {
     height: auto;
     object-fit: contain;
     object-position: top;
+}
+
+/* Tooltips基础样式 */
+[data-tooltip] {
+    cursor: pointer;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 12px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: var(--borderRadius-third);
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 1000;
+    pointer-events: none;
+    height: 20px;
+
+}
+
+[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-8px);
+}
+
+.sequence-number[data-tooltip]::after,
+.delete-stamp[data-tooltip]::after {
+    top: 100%;
+}
+
+.sequence-number[data-tooltip]:hover::after,
+.delete-stamp[data-tooltip]:hover::after {
+    transform: translateX(-50%) translateY(8px);
 }
 
 /* 下载蒙层样式 */
@@ -520,7 +471,7 @@ button:hover {
 .download-progress {
     background-color: white;
     padding: 20px;
-    border-radius: 8px;
+    border-radius: var(--borderRadius-second);
     width: 300px;
     text-align: center;
 }
@@ -528,7 +479,7 @@ button:hover {
 .progress-bar {
     height: 10px;
     background-color: #f0f0f0;
-    border-radius: 5px;
+    border-radius: var(--borderRadius-third);
     margin-bottom: 10px;
     overflow: hidden;
 }
@@ -548,16 +499,15 @@ button:hover {
 }
 
 .stamp-position-display {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
+    position: relative;
+    background: #ffe65b3e;
+    border: 1px solid #ffe65bcc;
+    color: rgb(54, 2, 2);
     padding: 10px;
     text-align: center;
     font-size: 14px;
     z-index: 1000;
+    border-radius: var(--borderRadius-second);
 }
 
 @keyframes progress {

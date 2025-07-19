@@ -121,7 +121,7 @@ $(document).ready(function () {
                 };
             }
         }, 0);
-        const sequenceTag = $(`<div class="sequence-number">${sequenceNum}</div>`);
+        const sequenceTag = $(`<div class="sequence-number" data-tooltip="图片序号">${sequenceNum}</div>`);
         const fileNameTag = $(`<div class="file-name">${fileName.split('.')[0]}</div>`);
         styleItem.append(sequenceTag, fileNameTag);
 
