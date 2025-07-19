@@ -12,15 +12,117 @@ export function createStyleElement(imageData) {
     const styleItem = $('<div class="style-item"></div>');
     const img = $(`<img class="styleBg" src="${imageData}">`);
     const deleteBtn = $('<div class="delete-stamp">×</div>');
-    const syncBtn = $('<div class="sync-stamp">同步印花位置</div>');
+    const saveLocationBtn = $('<div class="save-location">💾 储存参数</div>');
+    const writeLocationBtn = $('<div class="write-location">☝️ 应用参数</div>');
+    const syncBtn = $('<div class="sync-stamp">👉 应用所有</div>');
 
     // 添加同步按钮点击处理
-    syncBtn.on('click', function () {
-        // 清空全局印花位置数据
-        window.globalStampPosition.x = 0;
-        window.globalStampPosition.top = 0;
-        window.globalStampPosition.width = 0;
-        window.globalStampPosition.height = 0;
+
+    saveLocationBtn.on('click', function () {
+        const markers = styleItem.find('.position-marker');
+        if (markers.length === 0) {
+            alert('没有可保存的印花位置');
+            return;
+        }
+
+        const allPositionData = [];
+        
+        markers.each(function() {
+            const marker = $(this);
+            const transform = marker.css('transform');
+            let translateX = 0, translateY = 0;
+
+            // 解析 transform 值
+            if (transform && transform !== 'none') {
+                if (transform.startsWith('matrix')) {
+                    const matrix = transform.match(/matrix\((.+)\)/)[1].split(', ');
+                    translateX = parseFloat(matrix[4]);
+                    translateY = parseFloat(matrix[5]);
+                } else if (transform.startsWith('translate')) {
+                    const translate = transform.match(/translate\((.+)\)/)[1].split(', ');
+                    translateX = parseFloat(translate[0]);
+                    translateY = parseFloat(translate[1]);
+                }
+            }
+
+            allPositionData.push({
+                index: marker.attr('data-index'),
+                active: marker.attr('data-active') === 'true',
+                x: translateX,
+                y: translateY,
+                width: parseFloat(marker.css('width')),
+                height: parseFloat(marker.css('height'))
+            });
+        });
+
+        // 检查是否已有数据
+        const existingData = localStorage.getItem('stampPositionsData');
+        if (existingData) {
+            // 显示确认弹窗
+            const userConfirmed = confirm('已存在保存的印花参数，是否覆盖？');
+            if (!userConfirmed) {
+                console.log('用户取消保存操作');
+                return;
+            }
+        }
+
+        try {
+            // 保存所有印花位置数据
+            localStorage.setItem('stampPositionsData', JSON.stringify(allPositionData));
+            
+            // 启用应用按钮
+            writeLocationBtn.prop('disabled', false);
+            
+            // 显示保存成功提示
+            console.log(`已保存 ${allPositionData.length} 个印花位置参数`);
+        } catch (e) {
+            console.error('保存印花位置数据失败:', e);
+            alert('保存失败，请检查存储空间');
+        }
+    });
+    writeLocationBtn.on('click', function() {
+        const savedData = localStorage.getItem('stampPositionsData');
+        if (!savedData) {
+            console.log('没有找到保存的印花位置数据');
+            return;
+        }
+
+        try {
+            const positionsData = JSON.parse(savedData);
+            if (!Array.isArray(positionsData)) {
+                console.log('保存的数据格式不正确');
+                return;
+            }
+            // 遍历所有印花色块
+            styleItem.find('.position-marker').each(function() {
+                const marker = $(this);
+                const index = marker.attr('data-index');
+                
+                // 查找匹配的参数
+                const matchedData = positionsData.find(item => item.index === index);
+                if (matchedData) {
+                    // 更新位置和尺寸
+                    marker.css({
+                        transform: `translate(${matchedData.x}px, ${matchedData.y}px)`,
+                        width: `${matchedData.width}px`,
+                        height: `${matchedData.height}px`
+                    }).attr({
+                        'data-x': matchedData.x,
+                        'data-y': matchedData.y,
+                        'data-width': matchedData.width,
+                        'data-height': matchedData.height,
+                        'data-active': matchedData.active.toString()
+                    });
+                }
+            });
+
+            console.log('印花位置参数已应用');
+        } catch (e) {
+            console.log('解析印花位置数据失败:', e);
+        }
+    });
+        syncBtn.on('click', function () {
+
         // 获取当前印花位置
         const marker = styleItem.find('.position-marker[data-active="true"]');
         if (marker.length) {
@@ -75,9 +177,10 @@ export function createStyleElement(imageData) {
 
         }
     });
-
-    // 添加删除按钮
-    styleItem.append(syncBtn, deleteBtn);
+    // 创建按钮容器并添加按钮
+    const buttonGroup = $('<div class="button-group"></div>');
+    buttonGroup.append(saveLocationBtn, writeLocationBtn,syncBtn);
+    styleItem.append(buttonGroup, deleteBtn);
 
     // 为款式图片添加位置标记功能
     styleItem.append('<div class="position-markers"></div>');

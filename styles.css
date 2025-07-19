@@ -252,25 +252,40 @@ button:hover {
     background-color: #d32f2f;
 }
 
-.sync-stamp {
+.button-group {
     position: absolute;
-    right: 5px;
-    bottom: 5px;
-    background-color: #00ffff;
-    color: #141212;
-    height: 30px;
-    border-radius: 8px;
-    padding: 0 10px;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s ease-in-out;
-    z-index: 99;
+    width: 100%;
+    bottom: 8px;
     display: flex;
+    gap: 2%;
+    height: 32px;
     align-items: center;
+    justify-content: center;
+    z-index: 10;
 }
 
-.sync-stamp:hover {
-    background-color: #00e1e1;
+.button-group>* {
+    color: #ffffff;
+    height: 100%;
+    width: 30%;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+    z-index: 99;
+    display: flex;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(4px);
+    border: 1px solid #ffffff7f;
+}
+
+.button-group>*:hover {
+    opacity: 1;
+    border: 1px solid #0000007f;
+    background-color: #0e0e0ff5;
+    box-shadow: 0 6px 20px rgba(7, 20, 81, 0.4);
 }
 
 /* 弹层样式 */
