@@ -454,6 +454,7 @@ $(document).ready(function () {
         const styleItems = $('#stylePreview .style-item');
         const stampItems = $('#stampPreview .stamp-item');
         let successCount = 0;
+        const zip = new JSZip();
 
         // 检查是否有款式和印花图片
         if (styleItems.length === 0 || stampItems.length === 0) {
@@ -461,6 +462,9 @@ $(document).ready(function () {
             $('.position-marker').show();
             return;
         }
+
+        // 显示下载进度
+        showDownloadOverlay('正在合成图片...', false);
 
         // 使用for循环确保顺序执行
         for (let i = 0; i < styleItems.length; i++) {
@@ -514,8 +518,15 @@ $(document).ready(function () {
                     await new Promise((resolve) => {
                         setTimeout(async () => {
                             try {
-                                if (await compositeImages(styleItem, canvas, ctx, stampImg.src, stampName)) {
+                                const compositeResult = await compositeImages(styleItem, canvas, ctx, stampImg.src, stampName);
+                                if (compositeResult) {
                                     successCount++;
+                                    
+                                    // 将合成结果添加到zip文件
+                                    const styleName = styleItem.find('.styleBg').attr('alt') || '';
+                                    const fileName = `${styleName.split('.')[0]}-${stampName.split('.')[0]}.jpg`;
+                                    const blob = await fetch(compositeResult).then(r => r.blob());
+                                    zip.file(fileName, blob);
                                 }
                             } catch (e) {
                                 console.error('合成失败:', e);
@@ -536,9 +547,29 @@ $(document).ready(function () {
         // 显示合成结果统计
         $('.position-marker').show();
         if (successCount > 0) {
-            // alert(`成功合成 ${successCount} 张图片`);
+            try {
+                // 生成并下载zip文件
+                showDownloadOverlay('正在创建压缩包...', false);
+                const content = await zip.generateAsync({type: 'blob'});
+                const url = URL.createObjectURL(content);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '合成图片.zip';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showDownloadOverlay('下载完成', false);
+                setTimeout(hideDownloadOverlay, 2000);
+            } catch (e) {
+                console.error('创建压缩包失败:', e);
+                showDownloadOverlay('创建压缩包失败', true);
+                setTimeout(hideDownloadOverlay, 3000);
+            }
         } else {
             alert('合成失败，请检查图片和设置');
+            hideDownloadOverlay();
         }
     });
 
@@ -631,15 +662,14 @@ $(document).ready(function () {
             ctx.restore();
         }
 
-        try {
-            let imageData = canvas.toDataURL('image/jpeg', 0.7);
-            // 生成包含印花名称的文件名（印花名+款式名）
-            const styleName = styleItem.find('.styleBg').attr('alt') || '';
-            const fileName = `${styleName.split('.')[0]}${stampName.split('.')[0]}`;
-            
-            // 触发下载
-            triggerDownload(imageData, fileName);
-            return true;
+                    try {
+                        let imageData = canvas.toDataURL('image/jpeg', 0.7);
+                        // 生成包含印花名称的文件名（印花名+款式名）
+                        const styleName = styleItem.find('.styleBg').attr('alt') || '';
+                        const fileName = `${styleName.split('.')[0]}${stampName.split('.')[0]}`;
+                
+                        // 返回图片数据URL，不直接触发下载
+                        return imageData;
         } catch (e) {
             console.error('生成图片数据失败:', e);
             return false;
