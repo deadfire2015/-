@@ -635,9 +635,7 @@ $(document).ready(function () {
             let imageData = canvas.toDataURL('image/jpeg', 0.7);
             // 生成包含印花名称的文件名（印花名+款式名）
             const styleName = styleItem.find('.styleBg').attr('alt') || '';
-            const fileName = `${stampName.split('.')[0]}${styleName.split('.')[0]}`;
-            
-            
+            const fileName = `${styleName.split('.')[0]}${stampName.split('.')[0]}`;
             
             // 触发下载
             triggerDownload(imageData, fileName);
