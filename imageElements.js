@@ -223,7 +223,7 @@ export function createStyleElement(imageData) {
                     <button class="mask-eraser" data-tooltip="擦除遮罩蒙版"><img src="imgs/eraser.svg" class="icons"></button>
                     <div class="mask-size-slider" data-tooltip="画笔大小" >
                         <input type="range" min="10" max="80" value="60" class="mask-size-input" style="width:100%;">
-                        <span class="mask-size-label" ><span class="mask-size-value">30</span></span>
+                        <span class="mask-size-label" ><span class="mask-size-value">60</span></span>
                     </div>
                     <button class="mask-confirm"  data-tooltip="保存遮罩蒙版"><img src="imgs/check.svg" class="icons"></button>
                     <button class="mask-cancel"  data-tooltip="不保存遮罩蒙版"><img src="imgs/x.svg" class="icons"></button>
@@ -285,7 +285,7 @@ export function createStyleElement(imageData) {
         }
 
         // 画笔大小
-        let brushSize = 30;
+        let brushSize = 60;
         const sizeInput = maskModal.find('.mask-size-input');
         const sizeValue = maskModal.find('.mask-size-value');
 
