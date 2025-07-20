@@ -32,6 +32,7 @@ export function createStyleElement(imageData) {
             const marker = $(this);
             const transform = marker.css('transform');
             let translateX = 0, translateY = 0;
+            let angle = parseFloat(marker.attr('data-angle')) || 0; // 新增：获取旋转角度
 
             // 解析 transform 值
             if (transform && transform !== 'none') {
@@ -52,7 +53,8 @@ export function createStyleElement(imageData) {
                 x: translateX,
                 y: translateY,
                 width: parseFloat(marker.css('width')),
-                height: parseFloat(marker.css('height'))
+                height: parseFloat(marker.css('height')),
+                angle: angle // 新增：保存旋转参数
             });
         });
 
@@ -102,9 +104,9 @@ export function createStyleElement(imageData) {
                 // 查找匹配的参数
                 const matchedData = positionsData.find(item => item.index === index);
                 if (matchedData) {
-                    // 更新位置和尺寸
+                    // 更新位置、尺寸和旋转
                     marker.css({
-                        transform: `translate(${matchedData.x}px, ${matchedData.y}px)`,
+                        transform: `translate(${matchedData.x}px, ${matchedData.y}px) rotate(${matchedData.angle || 0}deg)`,
                         width: `${matchedData.width}px`,
                         height: `${matchedData.height}px`
                     }).attr({
@@ -112,7 +114,8 @@ export function createStyleElement(imageData) {
                         'data-y': matchedData.y,
                         'data-width': matchedData.width,
                         'data-height': matchedData.height,
-                        'data-active': matchedData.active.toString()
+                        'data-active': matchedData.active.toString(),
+                        'data-angle': matchedData.angle || 0 // 新增：应用旋转数值
                     });
                 }
             });
@@ -127,9 +130,10 @@ export function createStyleElement(imageData) {
         // 获取当前印花位置
         const marker = styleItem.find('.position-marker[data-active="true"]');
         if (marker.length) {
-            // 1. 获取 transform 的 translate 值
+            // 1. 获取 transform 的 translate 值和旋转角度
             const transform = marker.css('transform');
             let translateX = 0, translateY = 0;
+            let angle = parseFloat(marker.attr('data-angle')) || 0;
 
             // 解析 matrix 或 translate 格式
             if (transform && transform !== 'none') {
@@ -151,10 +155,11 @@ export function createStyleElement(imageData) {
             window.globalStampPosition.y = translateY;
             window.globalStampPosition.width = parseFloat(marker.css('width'));
             window.globalStampPosition.height = parseFloat(marker.css('height'));
+            window.globalStampPosition.angle = angle; // 新增：同步旋转角度
 
             // 3. 更新底部显示
             // $('#stamp-position-display').text(
-            //     `印花位置: 左${translateX}px 上${translateY}px 宽${window.globalStampPosition.width}px 高${window.globalStampPosition.height}px`
+            //     `印花位置: 左${translateX}px 上${translateY}px 宽${window.globalStampPosition.width}px 高${window.globalStampPosition.height}px 角度${angle}°`
             // );
             // 4. 同步到所有款式（修正后的代码）
             $('.style-item').each(function () {
@@ -163,15 +168,16 @@ export function createStyleElement(imageData) {
 
                 if (targetMarker.length) {
                     targetMarker.css({
-                        transform: `translate(${translateX}px, ${translateY}px)`,
+                        transform: `translate(${translateX}px, ${translateY}px) rotate(${angle}deg)`,
                         width: `${window.globalStampPosition.width}px`,
                         height: `${window.globalStampPosition.height}px`
                     }).attr({  // 同步 data-* 属性
                         'data-x': translateX,
                         'data-y': translateY,
                         'data-width': window.globalStampPosition.width,
-                        'data-height': window.globalStampPosition.height
-                    });;
+                        'data-height': window.globalStampPosition.height,
+                        'data-angle': angle // 新增：同步旋转角度
+                    });
                 }
             });
 
@@ -216,7 +222,7 @@ export function createStyleElement(imageData) {
                     <button class="mask-brush" data-tooltip="绘制遮罩蒙版"><img src="imgs/brush.svg" class="icons"></button>
                     <button class="mask-eraser" data-tooltip="擦除遮罩蒙版"><img src="imgs/eraser.svg" class="icons"></button>
                     <div class="mask-size-slider" data-tooltip="画笔大小" >
-                        <input type="range" min="10" max="80" value="30" class="mask-size-input" style="width:100%;">
+                        <input type="range" min="10" max="80" value="60" class="mask-size-input" style="width:100%;">
                         <span class="mask-size-label" ><span class="mask-size-value">30</span></span>
                     </div>
                     <button class="mask-confirm"  data-tooltip="保存遮罩蒙版"><img src="imgs/check.svg" class="icons"></button>

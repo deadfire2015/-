@@ -27,6 +27,9 @@ $(document).ready(function () {
     const updateStampPreview = (styleItem, marker, stampName) => {
         const previewImg = styleItem.find('.stampreview')[0];
         const markerImg = marker.find('img')[0];
+        // 修复：没有图片时直接返回
+        if (!markerImg || !markerImg.src) return;
+
         // 更新预览图片源和alt属性
         $(previewImg).attr('src', markerImg.src);
         $(previewImg).attr('alt', stampName);
@@ -64,14 +67,17 @@ $(document).ready(function () {
             adjustedHeight = heightFitHeight;
         }
 
-        // 同步位置和尺寸到预览(顶部对齐)
+        // 同步位置、尺寸和旋转到预览(顶部对齐)
+        const angle = parseFloat(marker.attr('data-angle')) || 0;
         $(previewImg).css({
             left: left + 'px',
             top: top + 'px',
             width: adjustedWidth + 'px',
             height: adjustedHeight + 'px',
             'object-fit': 'cover',
-            'object-position': 'top'
+            'object-position': 'top',
+            'transform': `rotate(${angle}deg)`,
+            'transform-origin': '50% 50%' // 以中心为旋转中心
         });
 
         // 存储实际尺寸到data属性，供合成使用
@@ -173,18 +179,76 @@ $(document).ready(function () {
             const marker = $(this);
             const markerEl = marker[0];
 
-            // 初始化标记图片
-            const markerImg = marker.find('img');
-            if (!markerImg.length) {
-                marker.append('<img src="" alt="印花位置" style="width:100%;height:100%;object-fit:contain;">');
-            }
+            // 强制初始化标记图片和旋转控制点
+            marker.find('img').remove(); // 移除现有图片
+            marker.find('.rotate-handle').remove(); // 移除现有旋转按钮
+            // 添加旋转控制点(使用更新后的样式)
+            const rotateHandle = $('<div class="rotate-handle"></div>');
+            marker.append(rotateHandle);
+            
+            // 为旋转按钮单独绑定旋转交互
+            interact(rotateHandle[0]).draggable({
+                onstart: function(event) {
+                    const markerEl = $(event.target).closest('.position-marker')[0];
+                    // 添加旋转角度显示
+                    if (!$(markerEl).find('.rotate-angle').length) {
+                        $(markerEl).append('<div class="rotate-angle">0°</div>');
+                    }
+                    $(markerEl).addClass('rotating');
+                },
+                onmove: function(event) {
+                    const markerEl = $(event.target).closest('.position-marker')[0];
+                    const rect = markerEl.getBoundingClientRect();
+                    const center = {
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + rect.height / 2
+                    };
+                    // 计算相对于中心点的鼠标位置
+                    const mouseX = event.clientX - center.x;
+                    const mouseY = event.clientY - center.y;
+                    
+                    // 计算当前角度（0-360度）
+                    let angle = Math.atan2(mouseY, mouseX) * 180 / Math.PI + 90;
+                    angle = (angle + 360) % 360; // 确保角度在0-360范围内
+                    
+                    // 获取初始角度（第一次拖动时）
+                    if (!markerEl.hasAttribute('data-init-angle')) {
+                        const currentAngle = parseFloat(markerEl.getAttribute('data-angle')) || 0;
+                        markerEl.setAttribute('data-init-angle', currentAngle - angle);
+                    }
+                    const initAngle = parseFloat(markerEl.getAttribute('data-init-angle'));
+                    
+                    // 应用旋转角度（初始角度 + 当前旋转角度）
+                    const finalAngle = initAngle + angle;
+                    
+                    // 更新旋转角度
+                    markerEl.setAttribute('data-angle', angle);
+                    const x = parseFloat(markerEl.getAttribute('data-x')) || 0;
+                    const y = parseFloat(markerEl.getAttribute('data-y')) || 0;
+                    markerEl.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+                    
+                    // 更新角度显示
+                    $(markerEl).find('.rotate-angle').text(`${Math.round(angle)}°`);
+                    
+                    // 更新预览
+                    const styleItem = $(markerEl).closest('.style-item');
+                    const itemData = styleItemsData.get(styleItem[0]);
+                    if (selectedStamp && $(markerEl).hasClass('selected')) {
+                        updateStampPreview(styleItem, $(markerEl));
+                    }
+                },
+                onend: function(event) {
+                    const markerEl = $(event.target).closest('.position-marker')[0];
+                    $(markerEl).removeClass('rotating');
+                }
+            });
 
             // 确保元素可见且可交互
             markerEl.style.pointerEvents = 'auto';
             markerEl.style.touchAction = 'none';
 
             try {
-                // 使标记可拖动
+                // 拖动
                 interact(markerEl).draggable({
                     inertia: false,
                     modifiers: [
@@ -200,25 +264,75 @@ $(document).ready(function () {
                             const x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
                             const y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
 
-                            // 手动更新元素位置
-                            target.style.transform = `translate(${x}px, ${y}px)`;
+                            // 获取当前旋转角度
+                            const angle = parseFloat(target.getAttribute('data-angle')) || 0;
+                            // 更新transform属性，确保旋转原点为左上角
+                            target.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
+                            target.style.transformOrigin = '50% 50%';
                             target.setAttribute('data-x', x);
                             target.setAttribute('data-y', y);
-
+                            
                             // 更新数据属性
                             target.setAttribute('data-width', target.offsetWidth);
                             target.setAttribute('data-height', target.offsetHeight);
-
-                            // 更新预览
-                            const itemData = styleItemsData.get(styleItem[0]);
-                            if (selectedStamp && marker.hasClass('selected')) {
-                                updateStampPreview(styleItem, marker);
+                            
+                            // 强制更新预览
+                            const styleItem = $(target).closest('.style-item');
+                            if (selectedStamp) {
+                                updateStampPreview(styleItem, $(target));
+                                // 同时更新激活标记的预览
+                                const itemData = styleItemsData.get(styleItem[0]);
+                                if (itemData && itemData.activeMarker.hasClass('selected')) {
+                                    updateStampPreview(styleItem, itemData.activeMarker);
+                                }
                             }
                         }
                     }
                 });
 
-                // 使标记可缩放(以左上角为原点，严格保持比例)
+                // 旋转功能(按住Shift键拖拽实现旋转)
+                interact(markerEl).gesturable({
+                    listeners: {
+                        start(event) {
+                            const target = event.target;
+                            // 添加旋转角度显示元素
+                            if (!$(target).find('.rotate-angle').length) {
+                                $(target).append('<div class="rotate-angle">0°</div>');
+                            }
+                            // 添加旋转状态类
+                            $(target).addClass('rotating');
+                            // 保存初始旋转角度
+                            target.setAttribute('data-angle', 
+                                parseFloat(target.getAttribute('data-angle')) || 0);
+                        },
+                        move(event) {
+                            const target = event.target;
+                            const angle = (parseFloat(target.getAttribute('data-angle')) || 0) + event.da;
+                            
+                            // 更新旋转角度
+                            target.setAttribute('data-angle', angle);
+                            target.style.transform = 
+                                `translate(${target.getAttribute('data-x') || 0}px, ${target.getAttribute('data-y') || 0}px) 
+                                 rotate(${angle}deg)`;
+                            
+                            // 更新角度显示
+                            $(target).find('.rotate-angle').text(`${Math.round(angle)}°`);
+                            
+                            // 更新预览
+                            const styleItem = $(target).closest('.style-item');
+                            const itemData = styleItemsData.get(styleItem[0]);
+                            if (selectedStamp && $(target).hasClass('selected')) {
+                                updateStampPreview(styleItem, $(target));
+                            }
+                        },
+                        end(event) {
+                            // 移除旋转状态类
+                            $(event.target).removeClass('rotating');
+                        }
+                    }
+                });
+
+                //缩放(以左上角为原点，严格保持比例)
                 interact(markerEl).resizable({
                     edges: { left: false, right: true, bottom: true, top: false },
                     preserveAspectRatio: true,
@@ -232,13 +346,6 @@ $(document).ready(function () {
                             equalDelta: true // 强制保持比例
                         })
                     ],
-                    // 添加视觉反馈
-                    onstart: function (event) {
-                        event.target.classList.add('resizing-locked');
-                    },
-                    onend: function (event) {
-                        event.target.classList.remove('resizing-locked');
-                    },
                     listeners: {
                         start(event) {
                             const target = event.target;
@@ -329,11 +436,14 @@ $(document).ready(function () {
                 const itemData = styleItemsData.get(styleItem[0]);
 
                 if (itemData && itemData.activeMarker) {
-                    // 直接更新激活色块中的图片
-                    itemData.activeMarker.find('img').attr('src', stampImgSrc);
-
-                    // 更新预览
-                    updateStampPreview(styleItem, itemData.activeMarker, stampName);
+                                                // 保存当前旋转角度
+                                                const currentAngle = parseFloat(itemData.activeMarker.attr('data-angle')) || 0;
+                                                // 更新激活色块中的图片
+                                                itemData.activeMarker.find('img').attr('src', stampImgSrc);
+                                                // 恢复旋转角度
+                                                itemData.activeMarker.attr('data-angle', currentAngle);
+                                                // 更新预览
+                                                updateStampPreview(styleItem, itemData.activeMarker, stampName);
                 }
             });
         });
@@ -375,29 +485,19 @@ $(document).ready(function () {
             const itemData = styleItemsData.get(styleItem[0]);
 
             if (itemData && itemData.activeMarker) {
-                // 更新激活色块中的图片
-                const markerImg = itemData.activeMarker.find('img');
+                // 找到色块内的img
+                let markerImg = itemData.activeMarker.find('img');
+                if (markerImg.length === 0) {
+                    // 如果没有img，添加一个
+                    markerImg = $('<img>');
+                    itemData.activeMarker.append(markerImg);
+                }
                 markerImg.attr('src', selectedStamp);
                 markerImg.attr('alt', stampName);
             }
         });
     });
 
-
-    // 提取文件名逻辑
-    function getOriginalName(styleItem) {
-        const styleName = styleItem.find('.styleBg').attr('alt') || '款式';
-        const stampPreview = styleItem.find('.stampReview');
-
-        // 如果没有印花预览，只使用款式名称
-        if (stampPreview.length === 0) {
-            return styleName.split('.')[0];
-        }
-
-        // 有印花时使用"款式-印花"格式
-        const stampName = stampPreview.attr('alt') || '印花';
-        return `${styleName.split('.')[0]}-${stampName}`;
-    }
 
     // 显示下载蒙层
     function showDownloadOverlay(message, isError) {
@@ -410,6 +510,9 @@ $(document).ready(function () {
             progressBar.style.display = 'none';
         } else {
             progressBar.style.display = 'block';
+            progressBar.style.width = '100%';
+            progressBar.style.background = 'repeating-linear-gradient(45deg, #4CAF50, #4CAF50 10px, white 10px, white 20px)';
+            progressBar.style.animation = 'progressAnimation 1s linear infinite';
         }
         overlay.classList.add('active');
     }
@@ -420,48 +523,31 @@ $(document).ready(function () {
         overlay.classList.remove('active');
     }
 
-    // 提取下载逻辑
-    function triggerDownload(imageData, name) {
-        try {
-            // 确保传入的是有效的图片数据
-            if (!imageData || typeof imageData !== 'string' || !imageData.startsWith('data:image')) {
-                throw new Error('无效的图片数据');
+    // 动画进度条
+    function animateProgressBar(duration, progressCallback) {
+        return new Promise((resolve) => {
+            const progressBar = document.querySelector('.progress-bar');
+            let start = null;
+            
+            function step(timestamp) {
+                if (!start) start = timestamp;
+                const progress = (timestamp - start) / duration;
+                const percent = Math.min(progress * 100, 100);
+                // progressBar.style.width = `${percent}%`;
+                
+                if (progressCallback) {
+                    progressCallback(percent);
+                }
+                
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                } else {
+                    resolve();
+                }
             }
-
-            // 显示下载进度
-            showDownloadOverlay('正在下载...', false);
-
-            const link = document.createElement('a');
-            // 强制设置下载文件名，避免浏览器自动修改
-            link.setAttribute('download', `${name}.jpg`);
-            link.href = imageData;
-
-            // 添加临时样式确保点击有效
-            link.style.display = 'none';
-            document.body.appendChild(link);
-
-            // 使用更可靠的点击事件触发方式
-            const clickEvent = new MouseEvent('click', {
-                view: window,
-                bubbles: true,
-                cancelable: true
-            });
-            link.dispatchEvent(clickEvent);
-
-            // 延迟移除以确保下载开始
-            setTimeout(() => {
-                document.body.removeChild(link);
-                URL.revokeObjectURL(link.href);
-                // 显示下载完成提示
-                showDownloadOverlay('下载完成', false);
-                // 2秒后自动隐藏
-                setTimeout(hideDownloadOverlay, 2000);
-            }, 100);
-        } catch (e) {
-            console.error('图片下载失败:', e);
-            showDownloadOverlay(`下载失败: ${e.message}`, true);
-            setTimeout(hideDownloadOverlay, 3000);
-        }
+            
+            window.requestAnimationFrame(step);
+        });
     }
 
     // 合成按钮事件处理
@@ -479,8 +565,13 @@ $(document).ready(function () {
             return;
         }
 
-        // 显示下载进度
-        showDownloadOverlay('正在合成图片...', false);
+        // 显示初始进度
+        showDownloadOverlay('图片合成中...', false);
+        // TODO: 在这里添加合成图标
+
+        // 计算总任务数
+        const totalTasks = styleItems.length * stampItems.length;
+        let completedTasks = 0;
 
         // 使用for循环确保顺序执行
         for (let i = 0; i < styleItems.length; i++) {
@@ -547,6 +638,12 @@ $(document).ready(function () {
                             } catch (e) {
                                 console.error('合成失败:', e);
                             } finally {
+                                // 更新完成的任务数
+                                completedTasks++;
+                                // 计算并更新进度 (0-50%为合成阶段)
+                                const progress = Math.floor((completedTasks / totalTasks) * 50);
+                                const progressBar = document.querySelector('.progress-bar');
+                                // progressBar.style.width = `${progress}%`;
                                 // 释放资源
                                 canvas.width = 0;
                                 canvas.height = 0;
@@ -564,24 +661,28 @@ $(document).ready(function () {
         $('.position-marker').show();
         if (successCount > 0) {
             try {
-                // 生成并下载zip文件
-                showDownloadOverlay('正在创建压缩包...', false);
+                // 更新进度文本
+                const progressText = document.querySelector('.progress-text');
+                // 生成zip文件
+                progressText.textContent = '打包完成，已自动下载';
                 const content = await zip.generateAsync({ type: 'blob' });
+                
+                // 自动下载
                 const url = URL.createObjectURL(content);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = '合成图片.zip';
+                a.download = '图片合成.zip';
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
-
-                showDownloadOverlay('下载完成', false);
-                setTimeout(hideDownloadOverlay, 2000);
+                
+                // 2秒后隐藏进度条
+                setTimeout(hideDownloadOverlay, 1000);
             } catch (e) {
                 console.error('创建压缩包失败:', e);
                 showDownloadOverlay('创建压缩包失败', true);
-                setTimeout(hideDownloadOverlay, 3000);
+                setTimeout(hideDownloadOverlay, 1000);
             }
         } else {
             alert('合成失败，请检查图片和设置');
@@ -603,6 +704,7 @@ $(document).ready(function () {
 
         // 应用蒙版（将蒙版区域设为透明，印花不可见）
         const maskImage = styleItem.data('maskImage');
+        let maskData = null;
         if (maskImage) {
             const maskImg = new Image();
             maskImg.src = maskImage;
@@ -616,14 +718,12 @@ $(document).ready(function () {
             maskCanvas.height = canvasHeight;
             const maskCtx = maskCanvas.getContext('2d');
             maskCtx.drawImage(maskImg, 0, 0, canvasWidth, canvasHeight);
-            // 获取mask像素
-            const maskData = maskCtx.getImageData(0, 0, canvasWidth, canvasHeight);
-            // 创建透明蒙版
+            maskData = maskCtx.getImageData(0, 0, canvasWidth, canvasHeight);
+            // 保持底图可见（原逻辑）
             const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
             for (let i = 0; i < maskData.data.length; i += 4) {
-                // mask黑色区域设为透明
                 if (maskData.data[i + 3] > 0) {
-                    imageData.data[i + 3] = 255; // 保持底图可见
+                    imageData.data[i + 3] = 255;
                 }
             }
             ctx.putImageData(imageData, 0, 0);
@@ -672,6 +772,9 @@ $(document).ready(function () {
         }
 
         // 应用全局缩放系数
+        // 修正：marker的x/y是相对于款式图片的 offsetLeft/offsetTop，但 canvas 是自然尺寸，需按比例缩放
+        // 预览图用 getBoundingClientRect 计算 left/top，合成时应用同样的缩放
+        // 这里 globalScaleFactor 已经是自然宽度/显示宽度，直接用 x/y * globalScaleFactor 即可
         const scaledX = x * globalScaleFactor;
         const scaledY = y * globalScaleFactor;
         const scaledWidth = keepRatioWidth * globalScaleFactor;
@@ -681,59 +784,51 @@ $(document).ready(function () {
         ctx.save();
 
         try {
-            // 高质量绘制(保持原始比例)
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
-            // 绘制印花图片（仅在未被蒙版遮挡区域绘制）
-            if (maskImage) {
-                // 只在未被mask遮挡区域绘制印花
-                // 先绘制到临时canvas
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = canvasWidth;
-                tempCanvas.height = canvasHeight;
-                const tempCtx = tempCanvas.getContext('2d');
-                tempCtx.drawImage(
-                    stampImg,
-                    0, 0, naturalWidth, naturalHeight,
-                    scaledX, scaledY, scaledWidth, scaledHeight
-                );
-                // 获取mask像素
-                const maskImg = new Image();
-                maskImg.src = maskImage;
-                await new Promise((resolve) => {
-                    maskImg.onload = resolve;
-                    maskImg.onerror = resolve;
-                });
-                const maskCanvas = document.createElement('canvas');
-                maskCanvas.width = canvasWidth;
-                maskCanvas.height = canvasHeight;
-                const maskCtx = maskCanvas.getContext('2d');
-                maskCtx.drawImage(maskImg, 0, 0, canvasWidth, canvasHeight);
-                const maskData = maskCtx.getImageData(0, 0, canvasWidth, canvasHeight);
+            // 只旋转印花，不旋转蒙版
+            // 创建临时canvas用于印花绘制（带旋转/缩放/位移）
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvasWidth;
+            tempCanvas.height = canvasHeight;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.save();
+            // 修正：旋转原点统一为中心点，与预览一致
+            const angle = parseFloat(marker.attr('data-angle')) || 0;
+            if (angle) {
+                // 计算中心点坐标（考虑缩放系数）
+                const centerX = (x + width/2) * globalScaleFactor;
+                const centerY = (y + height/2) * globalScaleFactor;
+                tempCtx.translate(centerX, centerY);
+                tempCtx.rotate(angle * Math.PI / 180);
+                tempCtx.translate(-centerX, -centerY);
+            }
+            // 修正：印花绘制位置和尺寸与预览一致
+            tempCtx.drawImage(
+                stampImg,
+                0, 0, naturalWidth, naturalHeight,
+                scaledX, scaledY, scaledWidth, scaledHeight
+            );
+            tempCtx.restore();
+
+            if (maskImage && maskData) {
+                // 获取印花像素
                 const stampData = tempCtx.getImageData(0, 0, canvasWidth, canvasHeight);
-                // 将mask区域设为透明
+                // 将mask区域设为透明（蒙版不旋转/缩放/位移，直接用原始maskData）
                 for (let i = 0; i < maskData.data.length; i += 4) {
                     if (maskData.data[i + 3] > 0) {
                         stampData.data[i + 3] = 0;
                     }
                 }
                 tempCtx.putImageData(stampData, 0, 0);
-                // 绘制到主canvas
-                ctx.drawImage(tempCanvas, 0, 0);
-            } else {
-                // 无蒙版时正常绘制
-                ctx.drawImage(
-                    stampImg,
-                    0, 0, naturalWidth, naturalHeight,
-                    scaledX, scaledY, scaledWidth, scaledHeight
-                );
             }
+            // 绘制到主canvas
+            ctx.drawImage(tempCanvas, 0, 0);
         } catch (e) {
             console.error('绘制印花时出错:', e);
             return false;
         } finally {
-            // 恢复Canvas状态
             ctx.restore();
         }
 
