@@ -12,9 +12,10 @@ export function createStyleElement(imageData) {
     const styleItem = $('<div class="style-item"></div>');
     const img = $(`<img class="styleBg" src="${imageData}">`);
     const deleteBtn = $('<div class="delete-stamp" data-tooltip="删除此图片">×</div>');
-    const saveLocationBtn = $('<div class="save-location" data-tooltip="保存此印花参数到缓存"><img src="imgs/save.svg" class="icons">储存此参数</div>');
-    const writeLocationBtn = $('<div class="write-location" data-tooltip="读取缓存参数到此印花"><img src="imgs/layers2.svg" class="icons">应用到当前</div>');
-    const syncBtn = $('<div class="sync-stamp" data-tooltip="应用此印花参数至所有款式"><img src="imgs/layers3.svg" class="icons">应用至所有</div>');
+    const saveLocationBtn = $('<div class="save-location" data-tooltip="保存此印花参数到缓存"><img src="imgs/save.svg" class="icons">储存参数</div>');
+    const writeLocationBtn = $('<div class="write-location" data-tooltip="读取缓存参数到此印花"><img src="imgs/layers2.svg" class="icons">应用参数</div>');
+    const syncBtn = $('<div class="sync-stamp" data-tooltip="应用此印花参数至所有款式"><img src="imgs/layers3.svg" class="icons">应用所有</div>');
+    const maskBtn = $('<div class="mask-edit" data-tooltip="可绘制印花不可见区域"><img src="imgs/mask.svg" class="icons">蒙版</div>');
 
     // 添加同步按钮点击处理
 
@@ -179,11 +180,15 @@ export function createStyleElement(imageData) {
     });
     // 创建按钮容器并添加按钮
     const buttonGroup = $('<div class="button-group"></div>');
-    buttonGroup.append(saveLocationBtn, writeLocationBtn, syncBtn);
+    buttonGroup.append(saveLocationBtn, writeLocationBtn, syncBtn, maskBtn);
     styleItem.append(deleteBtn, buttonGroup);
 
     // 为款式图片添加位置标记功能
     styleItem.append('<div class="position-markers"></div>');
+
+    // 添加蒙版预览canvas（始终存在，叠加在款式图上）
+    const maskPreviewCanvas = $(`<canvas class="mask-preview-canvas" style="position:absolute;top:0;left:0;pointer-events:none;z-index:20;"></canvas>`);
+    styleItem.append(maskPreviewCanvas);
 
     // 添加4个默认位置标记
     const positions = [
@@ -201,6 +206,237 @@ export function createStyleElement(imageData) {
         `);
         styleItem.find('.position-markers').append(marker);
     });
+
+    // 蒙版弹层结构
+    const maskModal = $(`
+        <div class="mask-modal">
+            <div class="mask-modal-content">
+                <canvas class="mask-canvas" ></canvas>
+                <div class="mask-controls">
+                    <button class="mask-brush" data-tooltip="绘制遮罩蒙版"><img src="imgs/brush.svg" class="icons"></button>
+                    <button class="mask-eraser" data-tooltip="擦除遮罩蒙版"><img src="imgs/eraser.svg" class="icons"></button>
+                    <div class="mask-size-slider" data-tooltip="画笔大小" >
+                        <input type="range" min="10" max="80" value="30" class="mask-size-input" style="width:100%;">
+                        <span class="mask-size-label" ><span class="mask-size-value">30</span></span>
+                    </div>
+                    <button class="mask-confirm"  data-tooltip="保存遮罩蒙版"><img src="imgs/check.svg" class="icons"></button>
+                    <button class="mask-cancel"  data-tooltip="不保存遮罩蒙版"><img src="imgs/x.svg" class="icons"></button>
+                </div>
+            </div>
+        </div>
+    `);
+    $('body').append(maskModal);
+
+    // 蒙版按钮事件
+    maskBtn.on('click', function () {
+        // 显示弹层
+        maskModal.show();
+
+        // 始终隐藏系统指针
+        const imgEl = img[0];
+        const canvas = maskModal.find('.mask-canvas')[0];
+        $(canvas).css('cursor', 'none');
+
+        // 默认选中画笔按钮
+        const brushBtn = maskModal.find('.mask-brush');
+        const eraserBtn = maskModal.find('.mask-eraser');
+        brushBtn.addClass('active');
+        eraserBtn.removeClass('active');
+
+        // 初始化canvas尺寸为款式图自然尺寸
+        canvas.width = imgEl.naturalWidth;
+        canvas.height = imgEl.naturalHeight;
+
+        // 绘制款式图
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+
+        // 如果已有蒙版，绘制到canvas
+        if (styleItem.data('maskImage')) {
+            const maskImg = new Image();
+            maskImg.src = styleItem.data('maskImage');
+            maskImg.onload = () => {
+                ctx.globalAlpha = 0.5;
+                ctx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1;
+            };
+        }
+
+        // 画笔/橡皮擦逻辑
+        let drawing = false, mode = 'brush';
+        let lastX = 0, lastY = 0;
+        const maskLayer = document.createElement('canvas');
+        maskLayer.width = canvas.width;
+        maskLayer.height = canvas.height;
+        const maskCtx = maskLayer.getContext('2d');
+        if (styleItem.data('maskImage')) {
+            const maskImg = new Image();
+            maskImg.src = styleItem.data('maskImage');
+            maskImg.onload = () => {
+                maskCtx.drawImage(maskImg, 0, 0, maskLayer.width, maskLayer.height);
+            };
+        }
+
+        // 画笔大小
+        let brushSize = 30;
+        const sizeInput = maskModal.find('.mask-size-input');
+        const sizeValue = maskModal.find('.mask-size-value');
+
+        // 初始化滑块和数值
+        sizeInput.val(brushSize);
+        sizeValue.text(brushSize);
+
+        sizeInput.off('input').on('input', function () {
+            brushSize = parseInt(this.value, 10);
+            sizeValue.text(brushSize);
+            redraw();
+        });
+
+        // 鼠标圈圈预览
+        let mouseX = null, mouseY = null;
+        let showCursor = false;
+
+        // 在canvas上绘制画笔圈圈（只绘制圈圈，不重绘其它内容）
+        function drawCursorOnly() {
+            // 只绘制圈圈，不清除其它内容
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(mouseX, mouseY, brushSize / 2, 0, 2 * Math.PI);
+            ctx.strokeStyle = mode === 'brush' ? '#1976d2' : '#d32f2f';
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.7;
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        // redraw始终最后绘制圈圈
+        function redraw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imgEl, 0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(maskLayer, 0, 0, canvas.width, canvas.height);
+            ctx.globalAlpha = 1;
+            if (showCursor && mouseX !== null && mouseY !== null) {
+                drawCursorOnly();
+            }
+        }
+
+        // 画笔/橡皮擦绘制函数（必须在事件绑定前定义）
+        function drawLine(x1, y1, x2, y2) {
+            maskCtx.globalCompositeOperation = mode === 'brush' ? 'source-over' : 'destination-out';
+            maskCtx.strokeStyle = 'rgba(0,0,0,1)';
+            maskCtx.lineWidth = brushSize;
+            maskCtx.lineCap = 'round';
+            maskCtx.beginPath();
+            maskCtx.moveTo(x1, y1);
+            maskCtx.lineTo(x2, y2);
+            maskCtx.stroke();
+        }
+
+        // 鼠标移动时只绘制圈圈，不重绘其它内容
+        $(canvas).on('mousemove', function (e) {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            mouseY = (e.clientY - rect.top) * (canvas.height / rect.height);
+            showCursor = true;
+            redraw(); // 只调用 redraw，不再直接 clearRect
+            $(canvas).css('cursor', 'none');
+        });
+        $(canvas).on('mouseleave', function () {
+            showCursor = false;
+            redraw();
+            $(canvas).css('cursor', 'none');
+        });
+
+        // 触摸设备支持
+        $(canvas).on('touchmove', function (e) {
+            const rect = canvas.getBoundingClientRect();
+            const touch = e.originalEvent.touches[0];
+            mouseX = (touch.clientX - rect.left) * (canvas.width / rect.width);
+            mouseY = (touch.clientY - rect.top) * (canvas.height / rect.height);
+            showCursor = true;
+            redraw(); // 只调用 redraw，不再直接 clearRect
+            $(canvas).css('cursor', 'none');
+        });
+        $(canvas).on('touchend touchcancel', function () {
+            showCursor = false;
+            redraw();
+            $(canvas).css('cursor', 'none');
+        });
+
+        // 拖动绘制时，绘制线条后再绘制圈圈
+        $(canvas).on('mousedown touchstart', function (e) {
+            drawing = true;
+            const rect = canvas.getBoundingClientRect();
+            const evt = e.type.startsWith('touch') ? e.originalEvent.touches[0] : e;
+            lastX = (evt.clientX - rect.left) * (canvas.width / rect.width);
+            lastY = (evt.clientY - rect.top) * (canvas.height / rect.height);
+        });
+        $(canvas).on('mousemove touchmove', function (e) {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            const evt = e.type.startsWith('touch') ? e.originalEvent.touches[0] : e;
+            const x = (evt.clientX - rect.left) * (canvas.width / rect.width);
+            const y = (evt.clientY - rect.top) * (canvas.height / rect.height);
+            drawLine(lastX, lastY, x, y);
+            lastX = x; lastY = y;
+            // 绘制线条后再绘制圈圈
+            showCursor = true;
+            mouseX = x;
+            mouseY = y;
+            redraw(); // 只调用 redraw
+        });
+        $(canvas).on('mouseup mouseleave touchend', function () {
+            drawing = false;
+        });
+
+        maskModal.find('.mask-brush').off('click').on('click', function () {
+            mode = 'brush';
+            brushBtn.addClass('active');
+            eraserBtn.removeClass('active');
+        });
+        maskModal.find('.mask-eraser').off('click').on('click', function () {
+            mode = 'eraser';
+            eraserBtn.addClass('active');
+            brushBtn.removeClass('active');
+        });
+        maskModal.find('.mask-confirm').off('click').on('click', function () {
+            // 保存maskLayer为图片
+            styleItem.data('maskImage', maskLayer.toDataURL('image/png'));
+            maskModal.hide();
+            // 触发预览刷新
+            styleItem.trigger('mask:updated');
+        });
+        maskModal.find('.mask-cancel').off('click').on('click', function () {
+            maskModal.hide();
+        });
+    });
+
+    // 蒙版预览刷新事件
+    styleItem.on('mask:updated', function () {
+        // 在款式预览图上应用蒙版
+        const canvas = styleItem.find('.mask-preview-canvas')[0];
+        const imgEl = img[0];
+        canvas.width = imgEl.naturalWidth;
+        canvas.height = imgEl.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        if (styleItem.data('maskImage')) {
+            const maskImg = new Image();
+            maskImg.src = styleItem.data('maskImage');
+            maskImg.onload = () => {
+                ctx.globalAlpha = 0.5;
+                ctx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1;
+            };
+        }
+    });
+
+    // 初始化时自动刷新蒙版预览（首次创建款式图片时）
+    setTimeout(() => {
+        styleItem.trigger('mask:updated');
+    }, 0);
 
     return {
         styleItem,

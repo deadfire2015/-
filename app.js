@@ -77,6 +77,29 @@ $(document).ready(function () {
         // 存储实际尺寸到data属性，供合成使用
         marker.data('actualWidth', adjustedWidth);
         marker.data('actualHeight', adjustedHeight);
+
+        // 蒙版预览
+        const maskImage = styleItem.data('maskImage');
+        if (maskImage) {
+            // 在预览图上应用蒙版
+            const previewCanvas = styleItem.find('.mask-preview-canvas');
+            if (previewCanvas.length === 0) {
+                styleItem.append(`<canvas class="mask-preview-canvas" style="position:absolute;top:0;left:0;pointer-events:none;z-index:20;"></canvas>`);
+            }
+            const canvas = styleItem.find('.mask-preview-canvas')[0];
+            const styleImg = styleItem.find('.styleBg')[0];
+            canvas.width = styleImg.naturalWidth;
+            canvas.height = styleImg.naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const maskImg = new Image();
+            maskImg.src = maskImage;
+            maskImg.onload = () => {
+                ctx.globalAlpha = 0.5;
+                ctx.drawImage(maskImg, 0, 0, canvas.width, canvas.height);
+                ctx.globalAlpha = 1;
+            };
+        }
     };
 
 
@@ -578,19 +601,33 @@ $(document).ready(function () {
         // 绘制基础款式图片
         ctx.drawImage(styleImg, 0, 0, canvasWidth, canvasHeight);
 
-        // 创建临时图片元素用于加载印花
-        const stampImg = new Image();
-        stampImg.crossOrigin = 'Anonymous';
-        stampImg.src = stampImgSrc;
-
-        // 等待印花图片加载
-        await new Promise((resolve) => {
-            stampImg.onload = resolve;
-            stampImg.onerror = () => {
-                console.error('印花图片加载失败');
-                resolve();
-            };
-        });
+        // 应用蒙版（将蒙版区域设为透明，印花不可见）
+        const maskImage = styleItem.data('maskImage');
+        if (maskImage) {
+            const maskImg = new Image();
+            maskImg.src = maskImage;
+            await new Promise((resolve) => {
+                maskImg.onload = resolve;
+                maskImg.onerror = resolve;
+            });
+            // 创建maskCanvas
+            const maskCanvas = document.createElement('canvas');
+            maskCanvas.width = canvasWidth;
+            maskCanvas.height = canvasHeight;
+            const maskCtx = maskCanvas.getContext('2d');
+            maskCtx.drawImage(maskImg, 0, 0, canvasWidth, canvasHeight);
+            // 获取mask像素
+            const maskData = maskCtx.getImageData(0, 0, canvasWidth, canvasHeight);
+            // 创建透明蒙版
+            const imageData = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+            for (let i = 0; i < maskData.data.length; i += 4) {
+                // mask黑色区域设为透明
+                if (maskData.data[i + 3] > 0) {
+                    imageData.data[i + 3] = 255; // 保持底图可见
+                }
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
 
         // 获取激活的位置标记
         const marker = styleItem.find('.position-marker.selected');
@@ -604,6 +641,20 @@ $(document).ready(function () {
         const y = parseFloat(marker.attr('data-y')) || 0;
         const width = parseFloat(marker.attr('data-width')) || 0;
         const height = parseFloat(marker.attr('data-height')) || 0;
+
+        // 创建临时图片元素用于加载印花
+        const stampImg = new Image();
+        stampImg.crossOrigin = 'Anonymous';
+        stampImg.src = stampImgSrc;
+
+        // 等待印花图片加载
+        await new Promise((resolve) => {
+            stampImg.onload = resolve;
+            stampImg.onerror = () => {
+                console.error('印花图片加载失败');
+                resolve();
+            };
+        });
 
         // 获取印花图片原始比例
         const naturalWidth = stampImg.naturalWidth;
@@ -634,19 +685,50 @@ $(document).ready(function () {
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
 
-            // 绘制印花图片
-            ctx.drawImage(
-                stampImg,
-                0, 0, naturalWidth, naturalHeight, // 源图像裁剪区域(使用完整图像)
-                scaledX, scaledY, scaledWidth, scaledHeight // 画布上的位置和尺寸
-            );
-
-            // 绘制印花图片
-            ctx.drawImage(
-                stampImg,
-                0, 0, naturalWidth, naturalHeight,
-                scaledX, scaledY, scaledWidth, scaledHeight
-            );
+            // 绘制印花图片（仅在未被蒙版遮挡区域绘制）
+            if (maskImage) {
+                // 只在未被mask遮挡区域绘制印花
+                // 先绘制到临时canvas
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvasWidth;
+                tempCanvas.height = canvasHeight;
+                const tempCtx = tempCanvas.getContext('2d');
+                tempCtx.drawImage(
+                    stampImg,
+                    0, 0, naturalWidth, naturalHeight,
+                    scaledX, scaledY, scaledWidth, scaledHeight
+                );
+                // 获取mask像素
+                const maskImg = new Image();
+                maskImg.src = maskImage;
+                await new Promise((resolve) => {
+                    maskImg.onload = resolve;
+                    maskImg.onerror = resolve;
+                });
+                const maskCanvas = document.createElement('canvas');
+                maskCanvas.width = canvasWidth;
+                maskCanvas.height = canvasHeight;
+                const maskCtx = maskCanvas.getContext('2d');
+                maskCtx.drawImage(maskImg, 0, 0, canvasWidth, canvasHeight);
+                const maskData = maskCtx.getImageData(0, 0, canvasWidth, canvasHeight);
+                const stampData = tempCtx.getImageData(0, 0, canvasWidth, canvasHeight);
+                // 将mask区域设为透明
+                for (let i = 0; i < maskData.data.length; i += 4) {
+                    if (maskData.data[i + 3] > 0) {
+                        stampData.data[i + 3] = 0;
+                    }
+                }
+                tempCtx.putImageData(stampData, 0, 0);
+                // 绘制到主canvas
+                ctx.drawImage(tempCanvas, 0, 0);
+            } else {
+                // 无蒙版时正常绘制
+                ctx.drawImage(
+                    stampImg,
+                    0, 0, naturalWidth, naturalHeight,
+                    scaledX, scaledY, scaledWidth, scaledHeight
+                );
+            }
         } catch (e) {
             console.error('绘制印花时出错:', e);
             return false;

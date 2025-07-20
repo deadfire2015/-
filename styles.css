@@ -48,13 +48,13 @@ body {
 }
 
 .styles-container {
-    height: 58.5vh;
+    height: 60vh;
     padding-bottom: 0;
 }
 
 .stamps-container {
     background-color: #ffffff;
-    height: 16vh;
+    height: 14vh;
 }
 
 .styles-container::-webkit-scrollbar {
@@ -250,7 +250,7 @@ body {
 .button-group>* {
     color: #ffffff;
     height: 100%;
-    width: 30%;
+    padding: 0 7px;
     border-radius: 6px;
     font-size: 14px;
     cursor: pointer;
@@ -304,7 +304,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap:8px;
+    gap: 8px;
 }
 
 .mix:hover {
@@ -557,4 +557,134 @@ body {
     100% {
         width: 100%;
     }
+}
+
+/* 蒙版弹层样式 */
+.mask-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 5vh 20vw;
+}
+
+.mask-modal-content {
+    background: #fff;
+    border-radius: 12px;
+    position: relative;
+    width:  100%;
+    height: 100%;
+    overflow: auto;
+    box-sizing: border-box;
+    margin: auto;
+}
+
+.mask-controls {
+    position: fixed;
+    left: 50%;
+    bottom: 8vh;
+    top: auto;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    z-index: 2100;
+    gap: 18px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(6px);
+    border-radius: var(--borderRadius-main);
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+.mask-controls>button {
+    width: 4vw;
+    height: 3vw;
+    color: rgb(0, 0, 0);
+    border: none;
+    border-radius: var(--borderRadius-second);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    transition: background-color 0.3s ease;
+    position: relative;
+}
+
+.mask-controls>button:hover{
+    background-color: #3d3f3d;
+}
+
+.mask-controls>button>img {
+    width: 24px;
+    height: 24px;
+    filter: brightness(0) invert(1);
+}
+
+.mask-controls>button.active {
+    background-color: #141515;
+    color: #fff;
+    box-shadow: 0 0 8px #1414146c;
+    border: 1px solid #2d2e30;
+}
+
+/* tooltips 在按钮左侧显示 */
+.mask-controls>button[data-tooltip]::after {
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: 100%;
+    transform: translateX(-50%) translateY(-8px);
+    margin-right: 0;
+    margin-bottom: 8px;
+    background-color: rgba(0,0,0,0.8);
+    color: white;
+    border-radius: var(--borderRadius-third);
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+    z-index: 1001;
+    pointer-events: none;
+    height: 20px;
+    padding: 6px 12px;
+    position: absolute;
+}
+
+.mask-controls>button[data-tooltip]:hover::after {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(-16px);
+}
+
+.mask-size-slider {
+    width: 8vw;
+    min-width: 100px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    margin: 0 0 0 0;
+}
+.mask-size-input {
+    width: 100%;
+    accent-color: #1976d2;
+    margin-bottom: 2px;
+}
+.mask-size-label {
+    color: #fff;
+    font-size: 13px;
+    text-align: center;
+    user-select: none;
 }
