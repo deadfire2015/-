@@ -726,3 +726,28 @@ body {
     text-align: center;
     user-select: none;
 }
+
+@media screen and (max-width: 750px)  {
+    .styles-container{
+        height: 43vh ;
+    }
+    .stamps-container{
+        height: 18vh;
+    }
+    .upload-area {
+        height: 20vh;
+        flex-wrap: wrap;
+        gap: 2vw;
+    }
+    .upload-container {
+        width: 48vw;
+        height: 12vh;
+        padding: 1vh 0;
+    }
+    .button-container {
+        width: 100vw;
+        height: 8vh;
+    }
+
+    
+}
